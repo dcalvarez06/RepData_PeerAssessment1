@@ -1,0 +1,251 @@
+Acivity Monitoring Data  
+========================================================
+## Loading and Preprocessing the data  
+
+  1) Load the Data:  
+
+This code shows how I am downloading and reading the .csv.  
+
+
+```r
+activity<-read.csv("activity.csv")
+```
+
+2) Process/Transform the data:  
+
+The following code removes the "nas" from the data set.
+
+
+```r
+activity2<-activity[complete.cases(activity),]
+```
+  
+##  What is mean total number of steps taken per day?  
+
+1) Make a Histogram of the total number of steps taken each day:  
+
+In order to do this, I used the data.table package and with that I was easily able to group the data by date.
+
+
+```r
+library(data.table)
+```
+
+```
+## Warning: package 'data.table' was built under R version 3.1.1
+```
+
+```r
+sumbyday<-aggregate(steps~date,activity2,sum)
+hist(sumbyday$steps, ylim=range(0:30), main="Total Number of Steps per Day", xlab="Steps Per Day")
+```
+
+![plot of chunk unnamed-chunk-3](figure/unnamed-chunk-3.png) 
+
+2) Calculate and Report the mean and median total number of steps taken per day:  
+
+The mean = 10766 and the median = 10765.
+
+
+```r
+print(mean(sumbyday$steps))
+```
+
+```
+## [1] 10766
+```
+
+```r
+print(median(sumbyday$steps))
+```
+
+```
+## [1] 10765
+```
+
+##  What is the average daily activity pattern?  
+
+1) Make a time series plot of the 5-minute interval(x-axis) and the average number of steps taken, averaged across all days(y-axis)
+
+In order to do this, I used the ggplot2 package. I found the mean by each interval, assigned the average number of steps as y and the various intervals converted to a numeric number as x.
+
+
+```r
+library(ggplot2)
+```
+
+```
+## Warning: package 'ggplot2' was built under R version 3.1.1
+```
+
+```r
+meanbyinterval<-aggregate(steps~interval,activity2,mean)
+y<-meanbyinterval$steps
+x<-as.numeric(meanbyinterval$interval)
+qplot(x,y,xlab="5 Min Intervals",ylab="Average Steps",main="Average Steps by 5 Min Intervals")
+```
+
+![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5.png) 
+
+2) Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+835 is the 5-min interval that contains the maximum average number of steps (206.1698)
+
+
+```r
+maxstep<-max(meanbyinterval$steps)
+which.max(meanbyinterval$steps)
+```
+
+```
+## [1] 104
+```
+
+```r
+meanbyinterval[104,1]
+```
+
+```
+## [1] 835
+```
+
+##  Imputing missing values
+
+1) Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+
+Note that I am using the original data set "activity" because this one still has the na values in it.  The total number of missing values is 2,304.
+
+
+```r
+sum(is.na(activity))
+```
+
+```
+## [1] 2304
+```
+
+2) Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.  
+&  
+3) Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+Replaced missing values with the mean using the "gam" package.
+
+
+```r
+library(gam)
+```
+
+```
+## Warning: package 'gam' was built under R version 3.1.1
+```
+
+```
+## Loading required package: splines
+## Loaded gam 1.09.1
+```
+
+```r
+act<-na.gam.replace(activity)
+```
+
+4) Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+The mean is the same, but the median has changed by 1 step.  The total daily number of steps has increased because instead of not including the missing values and calculating without them, we have replaced them with some values that will increase the total.
+
+
+```r
+library(data.table)
+sumbyday2<-aggregate(steps~date,act,sum)
+hist(sumbyday2$steps, ylim=range(0:40), main="Total Number of Steps per Day", xlab="Steps Per Day")
+```
+
+![plot of chunk unnamed-chunk-9](figure/unnamed-chunk-9.png) 
+
+```r
+print(mean(sumbyday2$steps))
+```
+
+```
+## [1] 10766
+```
+
+```r
+print(median(sumbyday2$steps))
+```
+
+```
+## [1] 10766
+```
+
+##  Are there differences in activity patterns between weekdays and weekends?
+
+1) Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+I changed the "date" column to the class "Date" and changed the dates to weekday names.  I put the data set into a data table, and added the column that included the weekday names. Then I replaced each name with "weekday" or "weekend" as appropriate. Then I added that column to the data set and removed the column with the weekday names.  Then I changed the columns to a class "factor".
+
+
+```r
+wday<-weekdays(as.Date(act$date))
+act2<-data.table(act)
+act2[,wday:=wday]
+```
+
+```
+##        steps       date interval   wday
+##     1: 37.38 2012-10-01        0 Monday
+##     2: 37.38 2012-10-01        5 Monday
+##     3: 37.38 2012-10-01       10 Monday
+##     4: 37.38 2012-10-01       15 Monday
+##     5: 37.38 2012-10-01       20 Monday
+##    ---                                 
+## 17564: 37.38 2012-11-30     2335 Friday
+## 17565: 37.38 2012-11-30     2340 Friday
+## 17566: 37.38 2012-11-30     2345 Friday
+## 17567: 37.38 2012-11-30     2350 Friday
+## 17568: 37.38 2012-11-30     2355 Friday
+```
+
+```r
+act3<-gsub("Monday", "weekday", act2$wday, fixed=T)
+act4<-gsub("Tuesday", "weekday", act3, fixed=T)
+act5<-gsub("Wednesday", "weekday", act4, fixed=T)
+act6<-gsub("Thursday", "weekday", act5, fixed=T)
+act7<-gsub("Friday", "weekday", act6, fixed=T)
+act8<-gsub("Saturday", "weekend", act7, fixed=T)
+act9<-gsub("Sunday", "weekend", act8, fixed=T)
+act2[,wkday:=act9]
+```
+
+```
+##        steps       date interval   wday   wkday
+##     1: 37.38 2012-10-01        0 Monday weekday
+##     2: 37.38 2012-10-01        5 Monday weekday
+##     3: 37.38 2012-10-01       10 Monday weekday
+##     4: 37.38 2012-10-01       15 Monday weekday
+##     5: 37.38 2012-10-01       20 Monday weekday
+##    ---                                         
+## 17564: 37.38 2012-11-30     2335 Friday weekday
+## 17565: 37.38 2012-11-30     2340 Friday weekday
+## 17566: 37.38 2012-11-30     2345 Friday weekday
+## 17567: 37.38 2012-11-30     2350 Friday weekday
+## 17568: 37.38 2012-11-30     2355 Friday weekday
+```
+
+```r
+actwk<-act2[,wday:=NULL]
+actwk<-act2[,date:=NULL]
+actwk<-actwk[,wkday:=as.factor(actwk$wkday)]
+```
+
+2) Make a panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+
+
+```r
+meanbyinterval2<-aggregate(steps~interval+wkday,actwk,mean)
+
+y2<-meanbyinterval2$steps
+x2<-as.numeric(meanbyinterval2$interval)
+ggplot(meanbyinterval2, aes(x=x2, y=y2))+geom_line(color="steel blue")+facet_wrap(~wkday, nrow=2, ncol=1)+labs(x="5 Min Intervals", y="Average Steps")+theme_bw()
+```
+
+![plot of chunk unnamed-chunk-11](figure/unnamed-chunk-11.png) 
